@@ -102,3 +102,7 @@ jobs:
         run: bin/db-migrate db:prepare
       - name: Run tests as app_user
         run: bin/rails test
+      - name: RLS policy matrix (S1-G1 — required, fails on any skip)
+        run: bin/rails rls:matrix
+      - name: RLS schema lint (S1-G1 — ENABLE+FORCE+policy on scoped tables)
+        run: bin/rails lint:rls_schema
