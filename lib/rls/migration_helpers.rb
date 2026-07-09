@@ -24,5 +24,22 @@ module Rls
         end
       end
     end
+
+    # S1-G1 · I2 / D5 — additive, SELECT-only grant-read policy (Shape B). Widens read
+    # access on a tenant-scoped table to a grantee whose non-revoked grants cover the
+    # row's tenant. Reads via granted_tenants() (SECURITY DEFINER) so it does not couple
+    # to the access_grants self-policy. Never grants write (no WITH CHECK / no FOR ALL).
+    def add_grant_read(table, column: :tenant_id)
+      reversible do |dir|
+        dir.up do
+          execute <<~SQL
+            CREATE POLICY grant_read ON #{table}
+              FOR SELECT
+              USING (app_scope() = 'grant' AND #{column} IN (SELECT granted_tenants(app_user_id())));
+          SQL
+        end
+        dir.down { execute "DROP POLICY IF EXISTS grant_read ON #{table};" }
+      end
+    end
   end
 end
