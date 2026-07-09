@@ -1,0 +1,10 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+#
+# S1-G0 · D8 — money lint runner (standalone; no Rails boot / DB needed).
+# CI-friendly entry point; the same logic is available as `bin/rails lint:money`.
+require_relative "../lib/money_lint"
+require "pathname"
+
+root = Pathname.new(__dir__).join("..").expand_path
+exit(MoneyLint.run(root) ? 0 : 1)
