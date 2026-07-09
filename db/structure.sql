@@ -81,6 +81,22 @@ CREATE TABLE public.ar_internal_metadata (
 
 
 --
+-- Name: marketplace_orders; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.marketplace_orders (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    seller_tenant_id uuid NOT NULL,
+    buyer_id uuid,
+    status character varying DEFAULT 'pending'::character varying NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+ALTER TABLE ONLY public.marketplace_orders FORCE ROW LEVEL SECURITY;
+
+
+--
 -- Name: probes; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -102,6 +118,22 @@ ALTER TABLE ONLY public.probes FORCE ROW LEVEL SECURITY;
 CREATE TABLE public.schema_migrations (
     version character varying NOT NULL
 );
+
+
+--
+-- Name: seller_profiles; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.seller_profiles (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    seller_tenant_id uuid NOT NULL,
+    listing_status character varying DEFAULT 'draft'::character varying NOT NULL,
+    display_name character varying,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+ALTER TABLE ONLY public.seller_profiles FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -134,6 +166,14 @@ ALTER TABLE ONLY public.ar_internal_metadata
 
 
 --
+-- Name: marketplace_orders marketplace_orders_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.marketplace_orders
+    ADD CONSTRAINT marketplace_orders_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: probes probes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -147,6 +187,14 @@ ALTER TABLE ONLY public.probes
 
 ALTER TABLE ONLY public.schema_migrations
     ADD CONSTRAINT schema_migrations_pkey PRIMARY KEY (version);
+
+
+--
+-- Name: seller_profiles seller_profiles_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.seller_profiles
+    ADD CONSTRAINT seller_profiles_pkey PRIMARY KEY (id);
 
 
 --
@@ -172,10 +220,24 @@ CREATE INDEX index_access_grants_on_grantor_tenant_id ON public.access_grants US
 
 
 --
+-- Name: index_marketplace_orders_on_seller_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_marketplace_orders_on_seller_tenant_id ON public.marketplace_orders USING btree (seller_tenant_id);
+
+
+--
 -- Name: index_probes_on_tenant_id; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX index_probes_on_tenant_id ON public.probes USING btree (tenant_id);
+
+
+--
+-- Name: index_seller_profiles_on_seller_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_seller_profiles_on_seller_tenant_id ON public.seller_profiles USING btree (seller_tenant_id);
 
 
 --
@@ -199,6 +261,22 @@ ALTER TABLE ONLY public.access_grants
 
 ALTER TABLE ONLY public.probes
     ADD CONSTRAINT fk_rails_50bbc796a2 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: seller_profiles fk_rails_645bffefa3; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.seller_profiles
+    ADD CONSTRAINT fk_rails_645bffefa3 FOREIGN KEY (seller_tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: marketplace_orders fk_rails_8d7e8d8906; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.marketplace_orders
+    ADD CONSTRAINT fk_rails_8d7e8d8906 FOREIGN KEY (seller_tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -229,10 +307,57 @@ CREATE POLICY grantor_manages ON public.access_grants USING (((public.app_scope(
 
 
 --
+-- Name: marketplace_orders; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.marketplace_orders ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: marketplace_orders mkt_platform_all; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY mkt_platform_all ON public.marketplace_orders USING ((public.app_scope() = 'mkt_platform'::text));
+
+
+--
+-- Name: seller_profiles mkt_platform_all; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY mkt_platform_all ON public.seller_profiles USING ((public.app_scope() = 'mkt_platform'::text));
+
+
+--
+-- Name: seller_profiles mkt_public_published; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY mkt_public_published ON public.seller_profiles FOR SELECT USING (((public.app_scope() = 'mkt_public'::text) AND ((listing_status)::text = 'published'::text)));
+
+
+--
+-- Name: marketplace_orders mkt_seller_own; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY mkt_seller_own ON public.marketplace_orders USING (((public.app_scope() = 'mkt_seller'::text) AND (seller_tenant_id = public.app_tenant_id())));
+
+
+--
+-- Name: seller_profiles mkt_seller_own; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY mkt_seller_own ON public.seller_profiles USING (((public.app_scope() = 'mkt_seller'::text) AND (seller_tenant_id = public.app_tenant_id())));
+
+
+--
 -- Name: probes; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
 ALTER TABLE public.probes ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: seller_profiles; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.seller_profiles ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: probes tenant_isolation; Type: POLICY; Schema: public; Owner: -
@@ -248,6 +373,7 @@ CREATE POLICY tenant_isolation ON public.probes USING (((public.app_scope() = 't
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260709180159'),
 ('20260709175653'),
 ('20260709140516'),
 ('20260709140515'),
