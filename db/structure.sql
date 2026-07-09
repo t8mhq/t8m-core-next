@@ -36,9 +36,37 @@ CREATE FUNCTION public.app_user_id() RETURNS uuid
     AS $$ SELECT NULLIF(current_setting('app.user_id', true), '')::uuid $$;
 
 
+--
+-- Name: granted_tenants(uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.granted_tenants(uid uuid) RETURNS SETOF uuid
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'public'
+    AS $$ SELECT grantor_tenant_id FROM access_grants
+     WHERE grantee_user_id = uid AND revoked_at IS NULL $$;
+
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
+
+--
+-- Name: access_grants; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.access_grants (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    grantor_tenant_id uuid NOT NULL,
+    grantee_user_id uuid NOT NULL,
+    role character varying NOT NULL,
+    revoked_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+ALTER TABLE ONLY public.access_grants FORCE ROW LEVEL SECURITY;
+
 
 --
 -- Name: ar_internal_metadata; Type: TABLE; Schema: public; Owner: -
@@ -90,6 +118,14 @@ CREATE TABLE public.tenants (
 
 
 --
+-- Name: access_grants access_grants_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.access_grants
+    ADD CONSTRAINT access_grants_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: ar_internal_metadata ar_internal_metadata_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -122,6 +158,20 @@ ALTER TABLE ONLY public.tenants
 
 
 --
+-- Name: index_access_grants_on_grantee_user_id_and_revoked_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_access_grants_on_grantee_user_id_and_revoked_at ON public.access_grants USING btree (grantee_user_id, revoked_at);
+
+
+--
+-- Name: index_access_grants_on_grantor_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_access_grants_on_grantor_tenant_id ON public.access_grants USING btree (grantor_tenant_id);
+
+
+--
 -- Name: index_probes_on_tenant_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -136,11 +186,46 @@ CREATE UNIQUE INDEX index_tenants_on_host ON public.tenants USING btree (host) W
 
 
 --
+-- Name: access_grants fk_rails_2c102d78ae; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.access_grants
+    ADD CONSTRAINT fk_rails_2c102d78ae FOREIGN KEY (grantor_tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: probes fk_rails_50bbc796a2; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.probes
     ADD CONSTRAINT fk_rails_50bbc796a2 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: access_grants; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.access_grants ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: probes grant_read; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY grant_read ON public.probes FOR SELECT USING (((public.app_scope() = 'grant'::text) AND (tenant_id IN ( SELECT public.granted_tenants(public.app_user_id()) AS granted_tenants))));
+
+
+--
+-- Name: access_grants grantee_reads_own; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY grantee_reads_own ON public.access_grants FOR SELECT USING (((public.app_scope() = 'grant'::text) AND (grantee_user_id = public.app_user_id())));
+
+
+--
+-- Name: access_grants grantor_manages; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY grantor_manages ON public.access_grants USING (((public.app_scope() = 'tenant'::text) AND (grantor_tenant_id = public.app_tenant_id())));
 
 
 --
@@ -163,6 +248,7 @@ CREATE POLICY tenant_isolation ON public.probes USING (((public.app_scope() = 't
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260709175653'),
 ('20260709140516'),
 ('20260709140515'),
 ('20260709140514');
