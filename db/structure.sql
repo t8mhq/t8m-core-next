@@ -81,6 +81,25 @@ CREATE TABLE public.ar_internal_metadata (
 
 
 --
+-- Name: domain_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.domain_events (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    aggregate_type character varying NOT NULL,
+    aggregate_id uuid NOT NULL,
+    sequence bigint NOT NULL,
+    event_type character varying NOT NULL,
+    payload jsonb DEFAULT '{}'::jsonb NOT NULL,
+    occurred_at timestamp(6) without time zone NOT NULL,
+    published_at timestamp(6) without time zone
+);
+
+ALTER TABLE ONLY public.domain_events FORCE ROW LEVEL SECURITY;
+
+
+--
 -- Name: marketplace_orders; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -166,6 +185,14 @@ ALTER TABLE ONLY public.ar_internal_metadata
 
 
 --
+-- Name: domain_events domain_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.domain_events
+    ADD CONSTRAINT domain_events_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: marketplace_orders marketplace_orders_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -203,6 +230,20 @@ ALTER TABLE ONLY public.seller_profiles
 
 ALTER TABLE ONLY public.tenants
     ADD CONSTRAINT tenants_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: idx_domain_events_aggregate_sequence; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_domain_events_aggregate_sequence ON public.domain_events USING btree (aggregate_type, aggregate_id, sequence);
+
+
+--
+-- Name: idx_domain_events_unpublished; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_domain_events_unpublished ON public.domain_events USING btree (aggregate_type, aggregate_id, sequence) WHERE (published_at IS NULL);
 
 
 --
@@ -286,6 +327,12 @@ ALTER TABLE ONLY public.marketplace_orders
 ALTER TABLE public.access_grants ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: domain_events; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.domain_events ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: probes grant_read; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -360,6 +407,27 @@ ALTER TABLE public.probes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.seller_profiles ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: domain_events svc_outbox_mark; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY svc_outbox_mark ON public.domain_events FOR UPDATE USING ((public.app_scope() = 'svc_outbox'::text));
+
+
+--
+-- Name: domain_events svc_outbox_read; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY svc_outbox_read ON public.domain_events FOR SELECT USING ((public.app_scope() = 'svc_outbox'::text));
+
+
+--
+-- Name: domain_events tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY tenant_isolation ON public.domain_events USING (((public.app_scope() = 'tenant'::text) AND (tenant_id = public.app_tenant_id())));
+
+
+--
 -- Name: probes tenant_isolation; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -373,6 +441,7 @@ CREATE POLICY tenant_isolation ON public.probes USING (((public.app_scope() = 't
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260709190841'),
 ('20260709180159'),
 ('20260709175653'),
 ('20260709140516'),
