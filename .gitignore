@@ -36,3 +36,6 @@
 # macOS folder metadata.
 .DS_Store
 
+
+# Token-tracker plugin runtime artifacts.
+/.claude/token-usage*.json

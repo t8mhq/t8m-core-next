@@ -36,7 +36,9 @@ module MoneyLint
 
   def self.scan_file(path)
     violations = []
-    path.each_line.with_index(1) do |line, lineno|
+    # Force UTF-8: source files carry non-ASCII (em-dashes in comments) and the
+    # default external encoding may be US-ASCII in CI.
+    File.read(path, encoding: "UTF-8").each_line.with_index(1) do |line, lineno|
       each_column(line) do |name, type|
         reason = violation_for(name, type)
         violations << Violation.new(rel(path), lineno, name, type, reason) if reason
