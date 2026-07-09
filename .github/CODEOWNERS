@@ -2,18 +2,20 @@
 #
 # Fiscal is compliance-critical: the platform is never the fiscal issuer
 # (ADR-0006), and fiscal changes carry legal risk. Any PR touching packs/fiscal/
-# requires review from the designated fiscal reviewers. Enforced by branch
-# protection ("Require review from Code Owners") on the pushed repo.
+# requires review from a fiscal code owner. Enforced by branch protection
+# ("Require review from Code Owners") on the remote.
 #
-# NOTE: the handles below are placeholders — replace with the real GitHub
-# teams/users before enabling Code Owner review, or GitHub will report an
-# unknown-owner error.
+# NOTE (solo owner): while @eduardovrocha is the only owner, GitHub will not let
+# them approve their own PR — so "require Code Owner review" blocks self-merge.
+# That is the intended friction (fiscal needs a second set of eyes); until there
+# is a second reviewer, either add one to a fiscal-reviewers team and point the
+# rules at it, or keep require_code_owner_reviews off in protect-main.sh.
 
 # Default owner for everything.
-*                       @t8mhq/core-maintainers
+*                       @eduardovrocha
 
-# Fiscal pack — designated reviewers.
-/packs/fiscal/          @t8mhq/fiscal-reviewers
+# Fiscal pack — designated reviewer(s).
+/packs/fiscal/          @eduardovrocha
 
-# Fiscal compliance issue template travels with the fiscal owners too.
-/.github/ISSUE_TEMPLATE/fiscal-compliance.yml  @t8mhq/fiscal-reviewers
+# Fiscal compliance issue template travels with the fiscal owner too.
+/.github/ISSUE_TEMPLATE/fiscal-compliance.yml  @eduardovrocha
