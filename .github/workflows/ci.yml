@@ -50,6 +50,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
@@ -64,6 +66,8 @@ jobs:
         run: bin/check-pack-graph
       - name: Money lint (D8 — integer cents)
         run: bin/lint-money
+      - name: Event payload schema compat (S1-G2 — additive only within a version)
+        run: git fetch --no-tags --depth=50 origin main && bin/check-event-compat
 
   test:
     runs-on: ubuntu-latest

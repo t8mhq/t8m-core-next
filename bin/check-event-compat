@@ -1,0 +1,41 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+#
+# S1-G2 · I3 / D6 — event payload schema compatibility. Within a version (@vN),
+# schema changes must be ADDITIVE: removing a field or changing a field's type is a
+# breaking change and fails CI (names the event type and field). A new @vN file is
+# additive and always passes.
+#
+# Compares docs/events/*.json in the working tree against a base ref (default
+# origin/main; override with EVENT_COMPAT_BASE). A file absent in the base is new.
+require "json"
+
+base = ENV["EVENT_COMPAT_BASE"] || "origin/main"
+problems = []
+
+Dir["docs/events/*.json"].sort.each do |path|
+  new_schema = JSON.parse(File.read(path))
+  old_raw = `git show #{base}:#{path} 2>/dev/null`
+  next if old_raw.strip.empty? # new file within this change — additive
+
+  old_schema = JSON.parse(old_raw)
+  event = File.basename(path, ".json")
+
+  (old_schema["properties"] || {}).each do |field, old_spec|
+    new_spec = (new_schema["properties"] || {})[field]
+    if new_spec.nil?
+      problems << "#{event}: field '#{field}' was removed (breaking within a version)"
+    elsif new_spec["type"] != old_spec["type"]
+      problems << "#{event}: field '#{field}' type changed #{old_spec['type'].inspect} -> #{new_spec['type'].inspect}"
+    end
+  end
+end
+
+if problems.empty?
+  puts "event compat: OK — schema changes are additive within versions"
+else
+  warn "event compat: #{problems.size} breaking change(s):\n"
+  problems.each { |p| warn "  #{p}" }
+  warn "\nWithin a version schemas may only grow. Breaking changes require a new @vN file."
+  exit 1
+end
