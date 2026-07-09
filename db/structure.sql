@@ -81,6 +81,19 @@ CREATE TABLE public.ar_internal_metadata (
 
 
 --
+-- Name: consumer_effects; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.consumer_effects (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    consumer_name character varying NOT NULL,
+    event_id uuid NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
 -- Name: domain_events; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -128,6 +141,18 @@ CREATE TABLE public.probes (
 );
 
 ALTER TABLE ONLY public.probes FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: processed_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.processed_events (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    consumer_name character varying NOT NULL,
+    event_id uuid NOT NULL,
+    processed_at timestamp(6) without time zone NOT NULL
+);
 
 
 --
@@ -185,6 +210,14 @@ ALTER TABLE ONLY public.ar_internal_metadata
 
 
 --
+-- Name: consumer_effects consumer_effects_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.consumer_effects
+    ADD CONSTRAINT consumer_effects_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: domain_events domain_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -206,6 +239,14 @@ ALTER TABLE ONLY public.marketplace_orders
 
 ALTER TABLE ONLY public.probes
     ADD CONSTRAINT probes_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: processed_events processed_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.processed_events
+    ADD CONSTRAINT processed_events_pkey PRIMARY KEY (id);
 
 
 --
@@ -244,6 +285,13 @@ CREATE UNIQUE INDEX idx_domain_events_aggregate_sequence ON public.domain_events
 --
 
 CREATE INDEX idx_domain_events_unpublished ON public.domain_events USING btree (aggregate_type, aggregate_id, sequence) WHERE (published_at IS NULL);
+
+
+--
+-- Name: idx_processed_events_uniqueness; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_processed_events_uniqueness ON public.processed_events USING btree (consumer_name, event_id);
 
 
 --
@@ -441,6 +489,7 @@ CREATE POLICY tenant_isolation ON public.probes USING (((public.app_scope() = 't
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260709193004'),
 ('20260709190841'),
 ('20260709180159'),
 ('20260709175653'),

@@ -1,8 +1,17 @@
-# S1-G2 · I1 — placeholder for consumer dispatch. G2-I2 wires the idempotency ledger
-# and real consumers behind this; in I1 it exists so the publisher has something to
-# enqueue and the crash tests can observe delivery.
+# S1-G2 · I1/I2 — dispatch a delivered event to its consumers, each guarded by the
+# idempotency ledger (Consumer::Base). Runs under svc_outbox to read domain_events.
+# Stage 1 has a single reference consumer; a registry is the extension point for G5.
 class OutboxDeliveryJob < ApplicationJob
+  requires_scope!
+
+  CONSUMERS = [ Consumer::Reference ].freeze
+
   def perform(event_id)
-    # I2: route event_id to subscribed consumers (each guarded by the ledger).
+    event = DomainEvent.find(event_id)
+    CONSUMERS.each { |consumer| consumer.process(event) }
+  end
+
+  def rls_scope
+    { scope_type: "svc_outbox" }
   end
 end
