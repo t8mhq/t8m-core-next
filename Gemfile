@@ -41,6 +41,10 @@ gem "image_processing", "~> 1.2"
 # S1-G2 · I3 — validate event payloads against their JSON Schema.
 gem "json_schemer"
 
+# S1-G2 · I6 — feature flags (release/ops/experiment) via the ActiveRecord adapter.
+gem "flipper"
+gem "flipper-active_record"
+
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"

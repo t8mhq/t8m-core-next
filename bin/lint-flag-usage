@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# S1-G2 · I6 — flag checks belong at controller/service boundaries, never scattered
+# into models (ADR-0001 §flag discipline). Fails if Feature.enabled? appears in any
+# model file (app/models or packs/*/app/models).
+set -euo pipefail
+
+matches="$(grep -rn --include='*.rb' 'Feature\.enabled?' app/models packs 2>/dev/null | grep '/app/models/' || true)"
+
+if [ -n "$matches" ]; then
+  {
+    echo "flag-usage lint: Feature.enabled? found inside model(s) — keep flag checks at"
+    echo "controller/service boundaries, not scattered through the domain:"
+    echo "$matches"
+  } >&2
+  exit 1
+fi
+
+echo "flag-usage lint: OK — no flag checks inside models"

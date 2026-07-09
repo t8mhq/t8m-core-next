@@ -125,6 +125,85 @@ ALTER TABLE ONLY public.domain_events FORCE ROW LEVEL SECURITY;
 
 
 --
+-- Name: feature_flags; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.feature_flags (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    key character varying NOT NULL,
+    kind character varying DEFAULT 'ops'::character varying NOT NULL,
+    owner character varying,
+    expires_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: flipper_features; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.flipper_features (
+    id bigint NOT NULL,
+    key character varying NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: flipper_features_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.flipper_features_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: flipper_features_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.flipper_features_id_seq OWNED BY public.flipper_features.id;
+
+
+--
+-- Name: flipper_gates; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.flipper_gates (
+    id bigint NOT NULL,
+    feature_key character varying NOT NULL,
+    key character varying NOT NULL,
+    value character varying,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: flipper_gates_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.flipper_gates_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: flipper_gates_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.flipper_gates_id_seq OWNED BY public.flipper_gates.id;
+
+
+--
 -- Name: marketplace_orders; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -138,6 +217,20 @@ CREATE TABLE public.marketplace_orders (
 );
 
 ALTER TABLE ONLY public.marketplace_orders FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: plan_entitlements; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.plan_entitlements (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    plan character varying NOT NULL,
+    feature_key character varying NOT NULL,
+    enabled boolean DEFAULT false NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
 
 
 --
@@ -193,6 +286,22 @@ ALTER TABLE ONLY public.seller_profiles FORCE ROW LEVEL SECURITY;
 
 
 --
+-- Name: tenant_feature_overrides; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.tenant_feature_overrides (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    feature_key character varying NOT NULL,
+    enabled boolean NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+ALTER TABLE ONLY public.tenant_feature_overrides FORCE ROW LEVEL SECURITY;
+
+
+--
 -- Name: tenants; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -201,8 +310,23 @@ CREATE TABLE public.tenants (
     name character varying NOT NULL,
     host character varying,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    plan character varying DEFAULT 'free'::character varying NOT NULL
 );
+
+
+--
+-- Name: flipper_features id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.flipper_features ALTER COLUMN id SET DEFAULT nextval('public.flipper_features_id_seq'::regclass);
+
+
+--
+-- Name: flipper_gates id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.flipper_gates ALTER COLUMN id SET DEFAULT nextval('public.flipper_gates_id_seq'::regclass);
 
 
 --
@@ -246,11 +370,43 @@ ALTER TABLE ONLY public.domain_events
 
 
 --
+-- Name: feature_flags feature_flags_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.feature_flags
+    ADD CONSTRAINT feature_flags_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: flipper_features flipper_features_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.flipper_features
+    ADD CONSTRAINT flipper_features_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: flipper_gates flipper_gates_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.flipper_gates
+    ADD CONSTRAINT flipper_gates_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: marketplace_orders marketplace_orders_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.marketplace_orders
     ADD CONSTRAINT marketplace_orders_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: plan_entitlements plan_entitlements_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.plan_entitlements
+    ADD CONSTRAINT plan_entitlements_pkey PRIMARY KEY (id);
 
 
 --
@@ -283,6 +439,14 @@ ALTER TABLE ONLY public.schema_migrations
 
 ALTER TABLE ONLY public.seller_profiles
     ADD CONSTRAINT seller_profiles_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: tenant_feature_overrides tenant_feature_overrides_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tenant_feature_overrides
+    ADD CONSTRAINT tenant_feature_overrides_pkey PRIMARY KEY (id);
 
 
 --
@@ -336,10 +500,38 @@ CREATE UNIQUE INDEX index_archived_events_on_event_id ON public.archived_events 
 
 
 --
+-- Name: index_feature_flags_on_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_feature_flags_on_key ON public.feature_flags USING btree (key);
+
+
+--
+-- Name: index_flipper_features_on_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_flipper_features_on_key ON public.flipper_features USING btree (key);
+
+
+--
+-- Name: index_flipper_gates_on_feature_key_and_key_and_value; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_flipper_gates_on_feature_key_and_key_and_value ON public.flipper_gates USING btree (feature_key, key, value);
+
+
+--
 -- Name: index_marketplace_orders_on_seller_tenant_id; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX index_marketplace_orders_on_seller_tenant_id ON public.marketplace_orders USING btree (seller_tenant_id);
+
+
+--
+-- Name: index_plan_entitlements_on_plan_and_feature_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_plan_entitlements_on_plan_and_feature_key ON public.plan_entitlements USING btree (plan, feature_key);
 
 
 --
@@ -354,6 +546,13 @@ CREATE INDEX index_probes_on_tenant_id ON public.probes USING btree (tenant_id);
 --
 
 CREATE INDEX index_seller_profiles_on_seller_tenant_id ON public.seller_profiles USING btree (seller_tenant_id);
+
+
+--
+-- Name: index_tenant_feature_overrides_on_tenant_id_and_feature_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_tenant_feature_overrides_on_tenant_id_and_feature_key ON public.tenant_feature_overrides USING btree (tenant_id, feature_key);
 
 
 --
@@ -503,6 +702,12 @@ CREATE POLICY svc_outbox_read ON public.domain_events FOR SELECT USING ((public.
 
 
 --
+-- Name: tenant_feature_overrides; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.tenant_feature_overrides ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: domain_events tenant_isolation; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -517,12 +722,20 @@ CREATE POLICY tenant_isolation ON public.probes USING (((public.app_scope() = 't
 
 
 --
+-- Name: tenant_feature_overrides tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY tenant_isolation ON public.tenant_feature_overrides USING (((public.app_scope() = 'tenant'::text) AND (tenant_id = public.app_tenant_id())));
+
+
+--
 -- PostgreSQL database dump complete
 --
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260709195444'),
 ('20260709194655'),
 ('20260709193004'),
 ('20260709190841'),

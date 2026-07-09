@@ -68,6 +68,8 @@ jobs:
         run: bin/lint-money
       - name: Event payload schema compat (S1-G2 — additive only within a version)
         run: git fetch --no-tags --depth=50 origin main && bin/check-event-compat
+      - name: Flag-usage discipline (S1-G2 — no flag checks inside models)
+        run: bin/lint-flag-usage
 
   test:
     runs-on: ubuntu-latest
