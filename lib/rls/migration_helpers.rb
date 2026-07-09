@@ -41,5 +41,42 @@ module Rls
         dir.down { execute "DROP POLICY IF EXISTS grant_read ON #{table};" }
       end
     end
+
+    # S1-G1 · I3 — the three marketplace scopes on a marketplace-owned table.
+    #   mkt_platform : cross-tenant, all commands (platform operates the marketplace)
+    #   mkt_seller   : the seller sees/writes only its own rows
+    #   mkt_public   : SELECT only, only rows meeting the published predicate (optional)
+    # These policies never mention 'tenant' scope, so a plain tenant session sees zero
+    # marketplace rows (default-deny). Likewise no core table names 'mkt_platform', so
+    # mkt_platform reads zero core rows — the matrix's bold cell, kept true by the tests.
+    def enable_marketplace_rls(table, seller_column: :seller_tenant_id, published_column: nil)
+      reversible do |dir|
+        dir.up do
+          execute <<~SQL
+            ALTER TABLE #{table} ENABLE ROW LEVEL SECURITY;
+            ALTER TABLE #{table} FORCE ROW LEVEL SECURITY;
+            CREATE POLICY mkt_platform_all ON #{table}
+              USING (app_scope() = 'mkt_platform');
+            CREATE POLICY mkt_seller_own ON #{table}
+              USING (app_scope() = 'mkt_seller' AND #{seller_column} = app_tenant_id());
+          SQL
+          if published_column
+            execute <<~SQL
+              CREATE POLICY mkt_public_published ON #{table}
+                FOR SELECT
+                USING (app_scope() = 'mkt_public' AND #{published_column} = 'published');
+            SQL
+          end
+        end
+        dir.down do
+          execute <<~SQL
+            DROP POLICY IF EXISTS mkt_platform_all ON #{table};
+            DROP POLICY IF EXISTS mkt_seller_own ON #{table};
+            DROP POLICY IF EXISTS mkt_public_published ON #{table};
+            ALTER TABLE #{table} DISABLE ROW LEVEL SECURITY;
+          SQL
+        end
+      end
+    end
   end
 end
