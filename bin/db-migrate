@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# S1-G0 · D5 — Run schema-owning tasks as app_migrator.
+#
+# Migrations (and db:create / db:prepare / db:schema:load) must run as the
+# owner role, not the runtime role. Runtime + tests connect as app_user.
+#
+#   bin/db-migrate                 # db:migrate
+#   bin/db-migrate db:prepare      # any db: task, as app_migrator
+set -euo pipefail
+
+export CORE_DB_USER="${APP_MIGRATOR_USER:-app_migrator}"
+export CORE_DB_PASSWORD="${APP_MIGRATOR_PASSWORD:-app_migrator}"
+
+here="$(cd "$(dirname "$0")" && pwd)"
+exec "${here}/rails" "${@:-db:migrate}"
