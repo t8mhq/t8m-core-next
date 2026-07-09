@@ -81,6 +81,18 @@ CREATE TABLE public.ar_internal_metadata (
 
 
 --
+-- Name: archived_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.archived_events (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    event_id uuid NOT NULL,
+    event_type character varying NOT NULL,
+    archived_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
 -- Name: consumer_effects; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -210,6 +222,14 @@ ALTER TABLE ONLY public.ar_internal_metadata
 
 
 --
+-- Name: archived_events archived_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.archived_events
+    ADD CONSTRAINT archived_events_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: consumer_effects consumer_effects_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -306,6 +326,13 @@ CREATE INDEX index_access_grants_on_grantee_user_id_and_revoked_at ON public.acc
 --
 
 CREATE INDEX index_access_grants_on_grantor_tenant_id ON public.access_grants USING btree (grantor_tenant_id);
+
+
+--
+-- Name: index_archived_events_on_event_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_archived_events_on_event_id ON public.archived_events USING btree (event_id);
 
 
 --
@@ -462,6 +489,13 @@ CREATE POLICY svc_outbox_mark ON public.domain_events FOR UPDATE USING ((public.
 
 
 --
+-- Name: domain_events svc_outbox_prune; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY svc_outbox_prune ON public.domain_events FOR DELETE USING ((public.app_scope() = 'svc_outbox'::text));
+
+
+--
 -- Name: domain_events svc_outbox_read; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -489,6 +523,7 @@ CREATE POLICY tenant_isolation ON public.probes USING (((public.app_scope() = 't
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260709194655'),
 ('20260709193004'),
 ('20260709190841'),
 ('20260709180159'),
