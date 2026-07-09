@@ -17,3 +17,7 @@ production:
   outbox_publisher:
     class: OutboxPublisherJob
     schedule: every minute
+  # S1-G2 · I7 — retention sweep (prune old published, archive carve-out, alert stale).
+  outbox_pruner:
+    class: OutboxPrunerJob
+    schedule: every day at 3am
