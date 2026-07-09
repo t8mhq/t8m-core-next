@@ -70,4 +70,18 @@ module MoneyLint
   def self.rel(path)
     path.to_s.sub(%r{\A.*/(db/)}, '\1')
   end
+
+  # Scan + report. Returns true when clean, false when violations were found.
+  def self.run(root)
+    violations = scan(root)
+    if violations.empty?
+      puts "money lint: OK — no money columns violate the integer-cents rule"
+      true
+    else
+      warn "money lint: #{violations.size} violation(s) — money must be integer cents\n\n"
+      violations.each { |v| warn "  #{v.location}\n    #{v.column} (#{v.type}) — #{v.reason}" }
+      warn "\nFix: store monetary values as integer cents in a `*_cents` column (bigint/integer)."
+      false
+    end
+  end
 end

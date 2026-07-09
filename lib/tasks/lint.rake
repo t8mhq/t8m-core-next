@@ -15,15 +15,6 @@ namespace :lint do
   task :money do
     require_relative "../money_lint"
     root = defined?(Rails) ? Rails.root : Pathname.new(Dir.pwd)
-    violations = MoneyLint.scan(root)
-
-    if violations.empty?
-      puts "money lint: OK — no money columns violate the integer-cents rule"
-    else
-      warn "money lint: #{violations.size} violation(s) — money must be integer cents\n\n"
-      violations.each { |v| warn "  #{v.location}\n    #{v.column} (#{v.type}) — #{v.reason}" }
-      warn "\nFix: store monetary values as integer cents in a `*_cents` column (bigint/integer)."
-      abort "money lint failed"
-    end
+    abort "money lint failed" unless MoneyLint.run(root)
   end
 end
