@@ -23,5 +23,13 @@ module CoreNext
     #
     # config.time_zone = "Central Time (US & Canada)"
     # config.eager_load_paths << Rails.root.join("extras")
+
+    # S1-G0 · D1/D3 — packs live under packs/{name}. Each pack's app/* directories
+    # (models, services, public, ...) are Zeitwerk roots, so packs/catalog/app/public/
+    # catalog/api.rb resolves to Catalog::Api. Packwerk enforces which of these are
+    # reachable across pack boundaries (only app/public/ is).
+    Dir.glob(root.join("packs/*/app/*")).each do |dir|
+      config.paths.add(dir.delete_prefix("#{root}/"), eager_load: true)
+    end
   end
 end
