@@ -10,7 +10,7 @@
 # Empty string is written for absent ids; the SQL helpers NULLIF('') them back to
 # NULL, which makes every policy predicate false ⇒ default-deny (D4).
 module Rls
-  SCOPES = %w[tenant grant mkt_platform mkt_seller mkt_public].freeze
+  SCOPES = %w[tenant grant mkt_platform mkt_seller mkt_public svc_outbox].freeze
 
   # Raised by the job guard (ScopedJob) when a scope-requiring job runs without one.
   class MissingScope < StandardError; end
