@@ -14,7 +14,7 @@ module CoreNext
     # Please, add to the `ignore` list any other `lib` subdirectories that do
     # not contain `.rb` files, or that should not be reloaded or eager loaded.
     # Common ones are `templates`, `generators`, or `middleware`, for example.
-    config.autoload_lib(ignore: %w[assets tasks])
+    config.autoload_lib(ignore: %w[assets tasks middleware])
 
     # Configuration for the application, engines, and railties goes here.
     #
@@ -23,6 +23,18 @@ module CoreNext
     #
     # config.time_zone = "Central Time (US & Canada)"
     # config.eager_load_paths << Rails.root.join("extras")
+
+    # S1-G1 · I1 — resolve + set RLS context per request, with a guaranteed reset on
+    # release. Required (not autoloaded, see lib ignore above) so the class exists while
+    # the middleware stack is still mutable here.
+    require_relative "../lib/middleware/rls_context_resolver"
+    require_relative "../lib/middleware/rls_context_middleware"
+    config.middleware.use RlsContextMiddleware
+
+    # S1-G1 — RLS policies and SQL functions are not representable in Ruby schema.rb.
+    # Use structure.sql so ENABLE/FORCE RLS, policies, and app_* functions round-trip
+    # through db:schema:load. This is a correctness requirement, not a preference.
+    config.active_record.schema_format = :sql
 
     # S1-G0 · D1/D3 — packs live under packs/{name}. Each pack's app/* directories
     # (models, services, public, ...) are Zeitwerk roots, so packs/catalog/app/public/
