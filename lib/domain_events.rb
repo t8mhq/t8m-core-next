@@ -15,6 +15,8 @@ module DomainEvents
       raise OutsideTransaction, "DomainEvents.publish requires an open transaction (D1)"
     end
 
+    EventSchema.validate!(event_type, payload) if EventSchema.enabled?
+
     aggregate_type = aggregate.class.base_class.name
     aggregate_id = aggregate.id
 
