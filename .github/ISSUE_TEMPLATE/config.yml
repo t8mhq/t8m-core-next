@@ -1,0 +1,4 @@
+# S1-G0 · I4 — blank issues are disabled so every issue goes through a template.
+# The Feature template's `Implements` field is `required: true`, which makes an
+# issue without an ADR/gate origin impossible to submit.
+blank_issues_enabled: false

@@ -1,0 +1,37 @@
+name: Fiscal compliance
+description: Legal instrument / Nota Técnica adaptation. Feeds COMPLIANCE.md (NT → issue → shipped version).
+labels: ["kind:fiscal-compliance"]
+body:
+  - type: input
+    id: instrument
+    attributes:
+      label: Legal instrument / NT
+      placeholder: "NT 2026.00X"
+    validations:
+      required: true
+  - type: input
+    id: official_link
+    attributes:
+      label: Official link
+      description: Link to the official publication (SEFAZ/CONFAZ/Receita).
+    validations:
+      required: true
+  - type: input
+    id: deadline
+    attributes:
+      label: Production deadline
+      placeholder: "YYYY-MM-DD"
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact analysis
+      description: Affected components (fiscal pack, sidecar, emitter adapter, archive), affected documents (NFC-e/NF-e), migration/backfill needs.
+    validations:
+      required: true
+  - type: input
+    id: implements
+    attributes:
+      label: Related ADR
+      placeholder: "ADR-0006, inherited/ADR-0004, ..."
