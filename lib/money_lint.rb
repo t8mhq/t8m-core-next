@@ -30,11 +30,17 @@ module MoneyLint
 
   def self.scan(root)
     root = Pathname.new(root)
-    files = Dir[root.join("db/migrate/*.rb")] + Dir[root.join("db/*schema.rb")]
+    files = Dir[root.join("db/migrate/*.rb")] +
+            Dir[root.join("db/*schema.rb")] +
+            Dir[root.join("db/structure.sql")]
     files.uniq.sort.flat_map { |path| scan_file(Pathname.new(path)) }
   end
 
   def self.scan_file(path)
+    path.to_s.end_with?(".sql") ? scan_sql(path) : scan_ruby(path)
+  end
+
+  def self.scan_ruby(path)
     violations = []
     # Force UTF-8: source files carry non-ASCII (em-dashes in comments) and the
     # default external encoding may be US-ASCII in CI.
@@ -45,6 +51,28 @@ module MoneyLint
       end
     end
     violations
+  end
+
+  # S1-G2 · I5.3 — also scan structure.sql, so a money column added via raw SQL
+  # (numeric/double precision) can't slip past the Ruby-DSL scan.
+  SQL_COL = /\A\s*"([a-z0-9_]+)"\s+(numeric|decimal|double precision|real|integer|bigint|smallint)/
+  def self.scan_sql(path)
+    violations = []
+    File.read(path, encoding: "UTF-8").each_line.with_index(1) do |line, lineno|
+      m = SQL_COL.match(line) or next
+      type = sql_type(m[2])
+      reason = violation_for(m[1], type)
+      violations << Violation.new(rel(path), lineno, m[1], type, reason) if reason
+    end
+    violations
+  end
+
+  def self.sql_type(sql)
+    case sql
+    when "numeric", "decimal" then "decimal"
+    when "double precision", "real" then "float"
+    else "integer" # integer / bigint / smallint
+    end
   end
 
   def self.each_column(line)

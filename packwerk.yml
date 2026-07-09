@@ -13,7 +13,9 @@ include:
   - "**/*.{rb,rake,erb}"
 
 exclude:
-  - "{bin,node_modules,script,tmp,vendor,storage,log,public,db}/**/*"
+  # test/ is excluded: tests legitimately reach into a pack's internals. Production
+  # boundaries (app/, packs/) are still fully enforced.
+  - "{bin,node_modules,script,tmp,vendor,storage,log,public,db,test}/**/*"
 
 # Root package (app/ glue) plus one package per bounded context.
 package_paths:
