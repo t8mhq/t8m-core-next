@@ -1,0 +1,33 @@
+name: Feature
+description: New capability. Origin in an ADR is mandatory — no ADR, no issue (write it first, label needs:adr).
+labels: ["kind:feature"]
+body:
+  - type: input
+    id: implements
+    attributes:
+      label: Implements
+      description: "ADR and section this issue originates from, e.g.: ADR-0002 §at-least-once (use inherited/ADR-XXXX for reference-model origins)"
+      placeholder: "ADR-000X §section"
+    validations:
+      required: true
+  - type: input
+    id: gate
+    attributes:
+      label: Gate / milestone
+      placeholder: "S1-G2"
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: What is being built, boundaries included and excluded.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Numbered, testable, each mapping to evidence in the gate's completion report. Include the negative tests.
+    validations:
+      required: true

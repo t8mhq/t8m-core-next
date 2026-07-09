@@ -1,0 +1,30 @@
+name: Bug
+description: Defect report. POS behavior questions are answered from version + config — app_version is mandatory.
+labels: ["kind:fix"]
+body:
+  - type: input
+    id: app_version
+    attributes:
+      label: app_version
+      description: Exact version of the affected component (POS release, Core deploy SHA, sidecar version).
+    validations:
+      required: true
+  - type: input
+    id: component
+    attributes:
+      label: Component
+      placeholder: "core | pos | sidecar | marketplace | ia"
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction
+      description: Steps, tenant/terminal context (scope type matters), expected vs actual.
+    validations:
+      required: true
+  - type: input
+    id: adr
+    attributes:
+      label: Related ADR (if the bug contradicts a decision)
+      placeholder: "ADR-000X or inherited/ADR-00XX"
