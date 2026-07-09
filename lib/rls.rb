@@ -12,6 +12,9 @@
 module Rls
   SCOPES = %w[tenant grant mkt_platform mkt_seller mkt_public].freeze
 
+  # Raised by the job guard (ScopedJob) when a scope-requiring job runs without one.
+  class MissingScope < StandardError; end
+
   module_function
 
   def set(scope_type:, tenant_id: nil, user_id: nil, local: false,
@@ -36,5 +39,14 @@ module Rls
   def current_scope(connection: ActiveRecord::Base.connection)
     v = connection.select_value("SELECT app_scope()")
     v.to_s.empty? ? nil : v
+  end
+
+  # S1-G1 · D3/I4 — run a block inside an explicit transaction with transaction-local
+  # context, so the context provably vanishes at commit/rollback (no residue after a job).
+  def with_scope(scope_type:, tenant_id: nil, user_id: nil, connection: ActiveRecord::Base.connection)
+    connection.transaction do
+      set(scope_type: scope_type, tenant_id: tenant_id, user_id: user_id, local: true, connection: connection)
+      yield
+    end
   end
 end
