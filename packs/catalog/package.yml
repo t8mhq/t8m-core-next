@@ -1,0 +1,6 @@
+# Pack: catalog — bounded context (ADR-0001, core spec §1).
+# Dependencies are the encoded graph (D4). Changing them is a visible
+# decision recorded as a D-delta in the gate report that ships it.
+enforce_dependencies: true
+enforce_privacy: true
+dependencies: []

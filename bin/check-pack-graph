@@ -1,0 +1,54 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+#
+# S1-G0 · D4 / I3.1 — Verify the committed pack dependency graph matches core spec §1.
+#
+# The canonical graph below is the encoded form of docs/adr/specs/core.md §1:
+#   orders → {catalog, stock, customers, payments, promotions}
+#   fiscal → orders ; shipping → orders ; promotions → catalog
+#   nothing depends on fiscal or shipping
+#
+# Any divergence between this canonical graph and the packs' package.yml files
+# fails. The graph IS the spec: changing it is a D-level decision, and it must be
+# changed in BOTH places in the same PR and recorded in the gate report.
+require "yaml"
+require "pathname"
+
+CANONICAL = {
+  "catalog"    => [],
+  "stock"      => [],
+  "customers"  => [],
+  "payments"   => [],
+  "promotions" => %w[catalog],
+  "orders"     => %w[catalog stock customers payments promotions],
+  "fiscal"     => %w[orders],
+  "shipping"   => %w[orders]
+}.freeze
+
+root = Pathname.new(__dir__).join("..").expand_path
+errors = []
+
+found = Dir[root.join("packs/*/package.yml")]
+        .map { |p| Pathname.new(p).parent.basename.to_s }.sort
+expected = CANONICAL.keys.sort
+errors << "pack set mismatch: expected #{expected.inspect}, found #{found.inspect}" if found != expected
+
+CANONICAL.each do |pack, deps|
+  file = root.join("packs", pack, "package.yml")
+  next unless file.exist?
+
+  cfg = YAML.safe_load(file.read) || {}
+  actual = Array(cfg["dependencies"]).map { |d| d.sub(%r{\Apacks/}, "") }.sort
+  errors << "#{pack}: dependencies #{actual.inspect} != spec §1 #{deps.sort.inspect}" if actual != deps.sort
+  errors << "#{pack}: enforce_dependencies must be true (D2)" unless cfg["enforce_dependencies"] == true
+  errors << "#{pack}: enforce_privacy must be true (D2)" unless cfg["enforce_privacy"] == true
+end
+
+if errors.empty?
+  puts "pack graph: OK — matches core spec §1 (8 packs, encoded dependencies + total enforcement)"
+else
+  warn "pack graph: #{errors.size} divergence(s) from core spec §1:\n"
+  errors.each { |e| warn "  - #{e}" }
+  warn "\nThe graph is the spec. Changing it is a D-level decision recorded in the gate report."
+  exit 1
+end
