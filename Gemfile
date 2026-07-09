@@ -50,6 +50,11 @@ group :development, :test do
 
   # Omakase Ruby styling [https://github.com/rails/rubocop-rails-omakase/]
   gem "rubocop-rails-omakase", require: false
+
+  # S1-G0 · ADR-0001 — mechanically enforced pack boundaries (D1..D4).
+  gem "packwerk", require: false
+  # Privacy checker (enforce_privacy) — extracted from packwerk core in 3.x.
+  gem "packwerk-extensions", require: false
 end
 
 group :development do

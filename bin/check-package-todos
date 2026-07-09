@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# S1-G0 · D2 — Ban package_todo.yml anywhere in the tree.
+#
+# Greenfield has no baseline: `packwerk update-todo` writes a package_todo.yml to
+# record *accepted* violations. In this repo there are none to accept — a
+# package_todo.yml is someone smuggling a boundary violation past enforcement.
+# Its mere existence fails CI.
+set -euo pipefail
+
+matches="$(find . -name 'package_todo.yml' \
+  -not -path './vendor/*' -not -path './node_modules/*' -not -path './tmp/*' 2>/dev/null || true)"
+
+if [ -n "$matches" ]; then
+  {
+    echo "D2 violation: package_todo.yml found."
+    echo "Total enforcement means violations are fixed, not deferred into a todo file."
+    echo "$matches"
+  } >&2
+  exit 1
+fi
+
+echo "D2 OK: no package_todo.yml present (total enforcement, no baseline)."

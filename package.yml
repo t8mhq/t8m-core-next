@@ -1,0 +1,10 @@
+# Root package — app/ glue only (boot, base records, application-wide concerns).
+# S1-G0 · D2: enforcement is total from commit 1. No domain code lives here;
+# a new top-level model outside a pack is a review rejection by convention.
+#
+# NOTE (G1): when domain models arrive they inherit shared base records
+# (ApplicationRecord) that live here as glue. Those base records must be made
+# referenceable by packs (root public surface) — a G1 concern; packs are empty
+# no-op surfaces in G0 and reference nothing here.
+enforce_dependencies: true
+enforce_privacy: true

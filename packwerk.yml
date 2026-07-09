@@ -1,0 +1,21 @@
+# S1-G0 · ADR-0001 / D1..D4 — Packwerk configuration.
+#
+# Packs live under packs/{name} (one bounded context each). app/ holds only glue.
+# Boundaries are enforced mechanically and totally from commit 1 (D2): every
+# package.yml sets enforce_dependencies + enforce_privacy true, and the presence
+# of any package_todo.yml fails CI (there is no baseline in a greenfield repo).
+
+# Privacy checker (enforce_privacy / public_path) is provided by packwerk-extensions.
+require:
+  - packwerk/privacy/checker
+
+include:
+  - "**/*.{rb,rake,erb}"
+
+exclude:
+  - "{bin,node_modules,script,tmp,vendor,storage,log,public,db}/**/*"
+
+# Root package (app/ glue) plus one package per bounded context.
+package_paths:
+  - "."
+  - "packs/*"
