@@ -21,3 +21,7 @@ production:
   outbox_pruner:
     class: OutboxPrunerJob
     schedule: every day at 3am
+  # S1-G2 · I4 — nightly stock reconciliation (alert-only, never fixes).
+  stock_reconciliation:
+    class: StockReconciliationJob
+    schedule: every day at 4am

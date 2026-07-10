@@ -10,6 +10,20 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
+-- Name: btree_gist; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS btree_gist WITH SCHEMA public;
+
+
+--
+-- Name: EXTENSION btree_gist; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON EXTENSION btree_gist IS 'support for indexing common datatypes in GiST';
+
+
+--
 -- Name: app_scope(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -45,6 +59,19 @@ CREATE FUNCTION public.granted_tenants(uid uuid) RETURNS SETOF uuid
     SET search_path TO 'public'
     AS $$ SELECT grantor_tenant_id FROM access_grants
      WHERE grantee_user_id = uid AND revoked_at IS NULL $$;
+
+
+--
+-- Name: stock_movements_immutable(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.stock_movements_immutable() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  RAISE EXCEPTION 'stock_movements are append-only (immutable)';
+END;
+$$;
 
 
 SET default_tablespace = '';
@@ -220,6 +247,38 @@ ALTER TABLE ONLY public.marketplace_orders FORCE ROW LEVEL SECURITY;
 
 
 --
+-- Name: ncm_classifications; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ncm_classifications (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    ncm character varying NOT NULL,
+    st boolean DEFAULT false NOT NULL,
+    monofasico boolean DEFAULT false NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: payments; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.payments (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    provider character varying,
+    method character varying,
+    amount_cents integer DEFAULT 0 NOT NULL,
+    acquirer_fee_cents integer,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+ALTER TABLE ONLY public.payments FORCE ROW LEVEL SECURITY;
+
+
+--
 -- Name: plan_entitlements; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -261,6 +320,24 @@ CREATE TABLE public.processed_events (
 
 
 --
+-- Name: products; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.products (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    name character varying NOT NULL,
+    price_cents integer DEFAULT 0 NOT NULL,
+    cost_cents integer,
+    ncm character varying,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+ALTER TABLE ONLY public.products FORCE ROW LEVEL SECURITY;
+
+
+--
 -- Name: schema_migrations; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -286,6 +363,38 @@ ALTER TABLE ONLY public.seller_profiles FORCE ROW LEVEL SECURITY;
 
 
 --
+-- Name: stock_balances; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.stock_balances (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    product_id uuid NOT NULL,
+    balance integer DEFAULT 0 NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+ALTER TABLE ONLY public.stock_balances FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: stock_movements; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.stock_movements (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    product_id uuid NOT NULL,
+    delta integer NOT NULL,
+    reason character varying,
+    created_at timestamp(6) without time zone NOT NULL
+);
+
+ALTER TABLE ONLY public.stock_movements FORCE ROW LEVEL SECURITY;
+
+
+--
 -- Name: tenant_feature_overrides; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -299,6 +408,25 @@ CREATE TABLE public.tenant_feature_overrides (
 );
 
 ALTER TABLE ONLY public.tenant_feature_overrides FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: tenant_fiscal_parameters; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.tenant_fiscal_parameters (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    rate_bps integer NOT NULL,
+    annex character varying NOT NULL,
+    valid_from date NOT NULL,
+    valid_to date,
+    authorship character varying DEFAULT 'merchant_unverified'::character varying NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+ALTER TABLE ONLY public.tenant_fiscal_parameters FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -402,6 +530,30 @@ ALTER TABLE ONLY public.marketplace_orders
 
 
 --
+-- Name: ncm_classifications ncm_classifications_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ncm_classifications
+    ADD CONSTRAINT ncm_classifications_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: tenant_fiscal_parameters no_overlapping_validity; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tenant_fiscal_parameters
+    ADD CONSTRAINT no_overlapping_validity EXCLUDE USING gist (tenant_id WITH =, daterange(valid_from, valid_to, '[)'::text) WITH &&);
+
+
+--
+-- Name: payments payments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payments
+    ADD CONSTRAINT payments_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: plan_entitlements plan_entitlements_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -426,6 +578,14 @@ ALTER TABLE ONLY public.processed_events
 
 
 --
+-- Name: products products_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.products
+    ADD CONSTRAINT products_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: schema_migrations schema_migrations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -442,11 +602,35 @@ ALTER TABLE ONLY public.seller_profiles
 
 
 --
+-- Name: stock_balances stock_balances_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stock_balances
+    ADD CONSTRAINT stock_balances_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: stock_movements stock_movements_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stock_movements
+    ADD CONSTRAINT stock_movements_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: tenant_feature_overrides tenant_feature_overrides_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.tenant_feature_overrides
     ADD CONSTRAINT tenant_feature_overrides_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: tenant_fiscal_parameters tenant_fiscal_parameters_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tenant_fiscal_parameters
+    ADD CONSTRAINT tenant_fiscal_parameters_pkey PRIMARY KEY (id);
 
 
 --
@@ -528,6 +712,13 @@ CREATE INDEX index_marketplace_orders_on_seller_tenant_id ON public.marketplace_
 
 
 --
+-- Name: index_ncm_classifications_on_ncm; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_ncm_classifications_on_ncm ON public.ncm_classifications USING btree (ncm);
+
+
+--
 -- Name: index_plan_entitlements_on_plan_and_feature_key; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -549,6 +740,13 @@ CREATE INDEX index_seller_profiles_on_seller_tenant_id ON public.seller_profiles
 
 
 --
+-- Name: index_stock_balances_on_tenant_id_and_product_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_stock_balances_on_tenant_id_and_product_id ON public.stock_balances USING btree (tenant_id, product_id);
+
+
+--
 -- Name: index_tenant_feature_overrides_on_tenant_id_and_feature_key; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -560,6 +758,13 @@ CREATE UNIQUE INDEX index_tenant_feature_overrides_on_tenant_id_and_feature_key 
 --
 
 CREATE UNIQUE INDEX index_tenants_on_host ON public.tenants USING btree (host) WHERE (host IS NOT NULL);
+
+
+--
+-- Name: stock_movements stock_movements_no_mutate; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER stock_movements_no_mutate BEFORE DELETE OR UPDATE ON public.stock_movements FOR EACH ROW EXECUTE FUNCTION public.stock_movements_immutable();
 
 
 --
@@ -669,16 +874,40 @@ CREATE POLICY mkt_seller_own ON public.seller_profiles USING (((public.app_scope
 
 
 --
+-- Name: payments; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: probes; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
 ALTER TABLE public.probes ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: products; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: seller_profiles; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
 ALTER TABLE public.seller_profiles ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: stock_balances; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.stock_balances ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: stock_movements; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.stock_movements ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: domain_events svc_outbox_mark; Type: POLICY; Schema: public; Owner: -
@@ -708,10 +937,23 @@ CREATE POLICY svc_outbox_read ON public.domain_events FOR SELECT USING ((public.
 ALTER TABLE public.tenant_feature_overrides ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: tenant_fiscal_parameters; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.tenant_fiscal_parameters ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: domain_events tenant_isolation; Type: POLICY; Schema: public; Owner: -
 --
 
 CREATE POLICY tenant_isolation ON public.domain_events USING (((public.app_scope() = 'tenant'::text) AND (tenant_id = public.app_tenant_id())));
+
+
+--
+-- Name: payments tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY tenant_isolation ON public.payments USING (((public.app_scope() = 'tenant'::text) AND (tenant_id = public.app_tenant_id())));
 
 
 --
@@ -722,10 +964,38 @@ CREATE POLICY tenant_isolation ON public.probes USING (((public.app_scope() = 't
 
 
 --
+-- Name: products tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY tenant_isolation ON public.products USING (((public.app_scope() = 'tenant'::text) AND (tenant_id = public.app_tenant_id())));
+
+
+--
+-- Name: stock_balances tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY tenant_isolation ON public.stock_balances USING (((public.app_scope() = 'tenant'::text) AND (tenant_id = public.app_tenant_id())));
+
+
+--
+-- Name: stock_movements tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY tenant_isolation ON public.stock_movements USING (((public.app_scope() = 'tenant'::text) AND (tenant_id = public.app_tenant_id())));
+
+
+--
 -- Name: tenant_feature_overrides tenant_isolation; Type: POLICY; Schema: public; Owner: -
 --
 
 CREATE POLICY tenant_isolation ON public.tenant_feature_overrides USING (((public.app_scope() = 'tenant'::text) AND (tenant_id = public.app_tenant_id())));
+
+
+--
+-- Name: tenant_fiscal_parameters tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY tenant_isolation ON public.tenant_fiscal_parameters USING (((public.app_scope() = 'tenant'::text) AND (tenant_id = public.app_tenant_id())));
 
 
 --
@@ -735,6 +1005,10 @@ CREATE POLICY tenant_isolation ON public.tenant_feature_overrides USING (((publi
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260709201416'),
+('20260709200211'),
+('20260709200210'),
+('20260709200209'),
 ('20260709195444'),
 ('20260709194655'),
 ('20260709193004'),
