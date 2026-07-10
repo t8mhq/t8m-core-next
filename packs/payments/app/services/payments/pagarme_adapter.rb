@@ -16,5 +16,11 @@ module Payments
     def fetch_status(_gateway_charge_id)
       "awaiting_payment"
     end
+
+    # Register a seller as a Pagar.me recipient. Mock: returns an id; KYC starts pending
+    # and is resolved by Pagar.me (a webhook flips it, I2).
+    def register_recipient(tenant_id:)
+      "rp_#{SecureRandom.hex(8)}"
+    end
   end
 end

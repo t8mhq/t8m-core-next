@@ -29,5 +29,28 @@ module Payments
     def fetch_status(payment)
       gateway.fetch_status(payment.gateway_charge_id)
     end
+
+    # --- recipients (I3) ---
+
+    def register_recipient(tenant_id: current_tenant)
+      Payments::Recipient.create!(
+        tenant_id: tenant_id,
+        recipient_id: gateway.register_recipient(tenant_id: tenant_id),
+        kyc_status: "pending"
+      )
+    end
+
+    # Simulates Pagar.me KYC approval (real: driven by a webhook, I2).
+    def approve_recipient(recipient)
+      recipient.update!(kyc_status: "approved")
+    end
+
+    def recipient_approved?(tenant_id)
+      Payments::Recipient.where(tenant_id: tenant_id, kyc_status: "approved").exists?
+    end
+
+    def current_tenant
+      ActiveRecord::Base.connection.select_value("SELECT app_tenant_id()")
+    end
   end
 end

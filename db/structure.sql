@@ -261,6 +261,22 @@ CREATE TABLE public.ncm_classifications (
 
 
 --
+-- Name: pagarme_recipients; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.pagarme_recipients (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    recipient_id character varying,
+    kyc_status character varying DEFAULT 'pending'::character varying NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+ALTER TABLE ONLY public.pagarme_recipients FORCE ROW LEVEL SECURITY;
+
+
+--
 -- Name: payments; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -563,6 +579,14 @@ ALTER TABLE ONLY public.tenant_fiscal_parameters
 
 
 --
+-- Name: pagarme_recipients pagarme_recipients_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pagarme_recipients
+    ADD CONSTRAINT pagarme_recipients_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: payments payments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -744,6 +768,13 @@ CREATE UNIQUE INDEX index_ncm_classifications_on_ncm ON public.ncm_classificatio
 
 
 --
+-- Name: index_pagarme_recipients_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_pagarme_recipients_on_tenant_id ON public.pagarme_recipients USING btree (tenant_id);
+
+
+--
 -- Name: index_payments_on_gateway_charge_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -892,6 +923,13 @@ CREATE POLICY mkt_platform_all ON public.seller_profiles USING ((public.app_scop
 
 
 --
+-- Name: pagarme_recipients mkt_platform_read; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY mkt_platform_read ON public.pagarme_recipients FOR SELECT USING ((public.app_scope() = 'mkt_platform'::text));
+
+
+--
 -- Name: seller_profiles mkt_public_published; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -911,6 +949,12 @@ CREATE POLICY mkt_seller_own ON public.marketplace_orders USING (((public.app_sc
 
 CREATE POLICY mkt_seller_own ON public.seller_profiles USING (((public.app_scope() = 'mkt_seller'::text) AND (seller_tenant_id = public.app_tenant_id())));
 
+
+--
+-- Name: pagarme_recipients; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.pagarme_recipients ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: payments; Type: ROW SECURITY; Schema: public; Owner: -
@@ -995,6 +1039,13 @@ CREATE POLICY tenant_isolation ON public.domain_events USING (((public.app_scope
 
 
 --
+-- Name: pagarme_recipients tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY tenant_isolation ON public.pagarme_recipients USING (((public.app_scope() = 'tenant'::text) AND (tenant_id = public.app_tenant_id())));
+
+
+--
 -- Name: payments tenant_isolation; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -1057,6 +1108,7 @@ CREATE POLICY tenant_isolation ON public.tenant_fiscal_parameters USING (((publi
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260709222357'),
 ('20260709221657'),
 ('20260709220310'),
 ('20260709201416'),
