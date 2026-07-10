@@ -22,6 +22,7 @@ ADMIN_USER="${PGADMIN_USER:-$(whoami)}"
 ADMIN_DB="${PGADMIN_DB:-postgres}"
 MIGRATOR_PASSWORD="${APP_MIGRATOR_PASSWORD:-app_migrator}"
 USER_PASSWORD="${APP_USER_PASSWORD:-app_user}"
+IA_PASSWORD="${SVC_IA_PASSWORD:-svc_ia}"
 
 here="$(cd "$(dirname "$0")" && pwd)"
 
@@ -37,6 +38,7 @@ echo "==> Provisioning roles (admin=${ADMIN_USER}@${PGHOST}:${PGPORT})"
 admin "$ADMIN_DB" \
   -v migrator_password="$MIGRATOR_PASSWORD" \
   -v user_password="$USER_PASSWORD" \
+  -v ia_password="$IA_PASSWORD" \
   -f "${here}/../db/roles.sql"
 
 for db in "${DATABASES[@]}"; do
@@ -55,6 +57,13 @@ ALTER DEFAULT PRIVILEGES FOR ROLE app_migrator IN SCHEMA public
 -- Backfill for anything already present.
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO app_user;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO app_user;
+
+-- S1-G5 · I4 — svc_ia reads the domain, NEVER writes core (SELECT only; write on ia_*
+-- is granted in db/grants.sql). This is what "zero write paths to core" is enforced by.
+GRANT CONNECT ON DATABASE "${db}" TO svc_ia;
+GRANT USAGE ON SCHEMA public TO svc_ia;
+ALTER DEFAULT PRIVILEGES FOR ROLE app_migrator IN SCHEMA public GRANT SELECT ON TABLES TO svc_ia;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO svc_ia;
 SQL
 done
 

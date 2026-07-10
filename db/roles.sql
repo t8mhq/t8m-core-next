@@ -22,3 +22,10 @@ SELECT format('CREATE ROLE app_user LOGIN NOSUPERUSER NOBYPASSRLS PASSWORD %L', 
 -- Re-assert the runtime role's safety attributes even if it pre-existed:
 -- this is the invariant G1 depends on and must never drift.
 ALTER ROLE app_user NOSUPERUSER NOBYPASSRLS;
+
+-- S1-G5 · I4 — the IA satellite's role: reads the domain, NEVER writes core (ADR-0007).
+-- SELECT is granted in bin/provision-db; write on ia_* is granted in db/grants.sql.
+-- No write grant on core tables ⇒ "zero write paths to core" enforced by the DB role.
+SELECT format('CREATE ROLE svc_ia LOGIN NOSUPERUSER NOBYPASSRLS PASSWORD %L', :'ia_password')
+ WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'svc_ia')\gexec
+ALTER ROLE svc_ia NOSUPERUSER NOBYPASSRLS;
