@@ -245,6 +245,20 @@ CREATE TABLE public.gateway_events (
 
 
 --
+-- Name: ia_read_models; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ia_read_models (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    kind character varying NOT NULL,
+    subject_tenant_id uuid,
+    data jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
 -- Name: marketplace_orders; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -613,6 +627,14 @@ ALTER TABLE ONLY public.gateway_events
 
 
 --
+-- Name: ia_read_models ia_read_models_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ia_read_models
+    ADD CONSTRAINT ia_read_models_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: marketplace_orders marketplace_orders_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -832,6 +854,13 @@ CREATE UNIQUE INDEX index_flipper_gates_on_feature_key_and_key_and_value ON publ
 --
 
 CREATE UNIQUE INDEX index_gateway_events_on_gateway_event_id ON public.gateway_events USING btree (gateway_event_id);
+
+
+--
+-- Name: index_ia_read_models_on_kind_and_subject_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ia_read_models_on_kind_and_subject_tenant_id ON public.ia_read_models USING btree (kind, subject_tenant_id);
 
 
 --
@@ -1229,6 +1258,7 @@ CREATE POLICY tenant_isolation ON public.tenant_fiscal_parameters USING (((publi
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260710094246'),
 ('20260709224547'),
 ('20260709223601'),
 ('20260709223204'),
