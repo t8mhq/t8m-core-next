@@ -10,6 +10,7 @@ Rails.application.routes.draw do
     namespace :v1 do
       post "sync/sales", to: "sync#sales"
       get  "sync/down",  to: "sync#down"
+      post "payments/webhook", to: "payments#webhook" # S1-G4 · I2 (ADR-0005 §webhook truth)
     end
   end
 
