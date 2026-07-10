@@ -395,6 +395,21 @@ ALTER TABLE ONLY public.stock_movements FORCE ROW LEVEL SECURITY;
 
 
 --
+-- Name: sync_receipts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.sync_receipts (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    uuid uuid NOT NULL,
+    result jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL
+);
+
+ALTER TABLE ONLY public.sync_receipts FORCE ROW LEVEL SECURITY;
+
+
+--
 -- Name: tenant_feature_overrides; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -618,6 +633,14 @@ ALTER TABLE ONLY public.stock_movements
 
 
 --
+-- Name: sync_receipts sync_receipts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sync_receipts
+    ADD CONSTRAINT sync_receipts_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: tenant_feature_overrides tenant_feature_overrides_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -744,6 +767,13 @@ CREATE INDEX index_seller_profiles_on_seller_tenant_id ON public.seller_profiles
 --
 
 CREATE UNIQUE INDEX index_stock_balances_on_tenant_id_and_product_id ON public.stock_balances USING btree (tenant_id, product_id);
+
+
+--
+-- Name: index_sync_receipts_on_tenant_id_and_uuid; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_sync_receipts_on_tenant_id_and_uuid ON public.sync_receipts USING btree (tenant_id, uuid);
 
 
 --
@@ -931,6 +961,12 @@ CREATE POLICY svc_outbox_read ON public.domain_events FOR SELECT USING ((public.
 
 
 --
+-- Name: sync_receipts; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.sync_receipts ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: tenant_feature_overrides; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -985,6 +1021,13 @@ CREATE POLICY tenant_isolation ON public.stock_movements USING (((public.app_sco
 
 
 --
+-- Name: sync_receipts tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY tenant_isolation ON public.sync_receipts USING (((public.app_scope() = 'tenant'::text) AND (tenant_id = public.app_tenant_id())));
+
+
+--
 -- Name: tenant_feature_overrides tenant_isolation; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -1005,6 +1048,7 @@ CREATE POLICY tenant_isolation ON public.tenant_fiscal_parameters USING (((publi
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260709220310'),
 ('20260709201416'),
 ('20260709200211'),
 ('20260709200210'),
