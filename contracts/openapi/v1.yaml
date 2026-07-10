@@ -1,0 +1,192 @@
+openapi: 3.1.0
+info:
+  title: t8m Core — platform contract
+  version: 1.0.0
+  description: >
+    The single front door for all channels (ADR-0009). Every channel is a client of
+    this one surface, scoped by auth. Versioning is by the X-T8M-API-Version header;
+    CI validates backward compatibility on every change.
+
+servers:
+  - url: https://api.t8m.example
+    description: Production
+
+# Auth scopes map 1:1 to the RLS scopes (ADR-0003). The security scheme a request
+# authenticates with determines the RLS scope its queries run under.
+components:
+  securitySchemes:
+    device_token:
+      type: http
+      scheme: bearer
+      description: POS device token → RLS `tenant` scope.
+    session:
+      type: http
+      scheme: bearer
+      description: User session (backoffice / portals) → RLS `tenant`/user scope.
+    grant:
+      type: http
+      scheme: bearer
+      description: Grant-scoped user (accountant-class) → RLS `grant` scope.
+    platform_service:
+      type: apiKey
+      in: header
+      name: X-T8M-Service-Key
+      description: Platform / marketplace service credential → RLS `mkt_platform` scope.
+    public_key:
+      type: apiKey
+      in: header
+      name: X-T8M-Api-Key
+      description: Public API key per tenant → RLS public/tenant scope.
+
+  parameters:
+    ApiVersion:
+      name: X-T8M-API-Version
+      in: header
+      required: false
+      description: Contract major version. Defaults to the latest supported.
+      schema:
+        type: string
+        default: "1"
+
+  schemas:
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string }
+        message: { type: string }
+
+    SyncSale:
+      type: object
+      required: [uuid, occurred_at]
+      properties:
+        uuid: { type: string, format: uuid, description: POS-generated idempotency key }
+        sequence: { type: integer, description: per-terminal ordering }
+        occurred_at: { type: string, format: date-time }
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              product_id: { type: string, format: uuid }
+              quantity: { type: integer }
+              unit_price_cents: { type: integer }
+        payments:
+          type: array
+          items:
+            type: object
+            properties:
+              method: { type: string, enum: [cash, credit, debit, pix, voucher] }
+              amount_cents: { type: integer }
+
+    SyncResult:
+      type: object
+      required: [uuid, status]
+      properties:
+        uuid: { type: string, format: uuid }
+        status: { type: string, enum: [processed, replayed] }
+
+    DownSyncSnapshot:
+      type: object
+      required: [contract_version, updated_since]
+      properties:
+        contract_version: { type: string }
+        updated_since: { type: string, format: date-time }
+        catalog: { type: array, items: { type: object } }
+        promotion_ruleset_version: { type: string }
+        config:
+          type: object
+          description: Typed configuration (compiled promotion rulesets, ADR-0008).
+
+paths:
+  /api/v1/sync/sales:
+    post:
+      operationId: upSyncSales
+      summary: Up-sync counter sales (batch, idempotent by POS UUID)
+      tags: [sync]
+      security:
+        - device_token: []
+      parameters:
+        - $ref: "#/components/parameters/ApiVersion"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sales]
+              properties:
+                sales:
+                  type: array
+                  items: { $ref: "#/components/schemas/SyncSale" }
+      responses:
+        "200":
+          description: Batch processed. Replays return the original result (at-least-once).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [results]
+                properties:
+                  results:
+                    type: array
+                    items: { $ref: "#/components/schemas/SyncResult" }
+        "401":
+          description: Missing or invalid device token
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/sync/down:
+    get:
+      operationId: downSync
+      summary: Down-sync snapshot (catalog/price/stock deltas + typed config)
+      tags: [sync]
+      security:
+        - device_token: []
+      parameters:
+        - $ref: "#/components/parameters/ApiVersion"
+        - name: updated_since
+          in: query
+          required: true
+          schema: { type: string, format: date-time }
+      responses:
+        "200":
+          description: Snapshot since the given watermark
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DownSyncSnapshot" }
+
+  /api/v1/marketplace/sub_orders:
+    post:
+      operationId: materializeSubOrder
+      summary: Materialize a marketplace sub-order (channel=marketplace, ADR-0004)
+      tags: [marketplace]
+      security:
+        - platform_service: []
+      parameters:
+        - $ref: "#/components/parameters/ApiVersion"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [marketplace_order_id, seller_tenant_id]
+              properties:
+                marketplace_order_id: { type: string, format: uuid }
+                seller_tenant_id: { type: string, format: uuid }
+      responses:
+        "201":
+          description: Sub-order created in the seller tenant
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sub_order_id: { type: string, format: uuid }
+        "401":
+          description: Missing or invalid service credential
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }

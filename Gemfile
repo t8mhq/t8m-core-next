@@ -41,6 +41,9 @@ gem "image_processing", "~> 1.2"
 # S1-G2 · I3 — validate event payloads against their JSON Schema.
 gem "json_schemer"
 
+# S1-G3 · I1 — validate the OpenAPI contract (pure Ruby, no external toolchain).
+gem "openapi3_parser"
+
 # S1-G2 · I6 — feature flags (release/ops/experiment) via the ActiveRecord adapter.
 gem "flipper"
 gem "flipper-active_record"
