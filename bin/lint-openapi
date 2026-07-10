@@ -1,0 +1,43 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+#
+# S1-G3 · I1 — validate the OpenAPI contract: it must be valid OpenAPI 3.1, declare the
+# five auth scopes (which map to the RLS scopes, ADR-0009), and every operation must be
+# secured and carry the X-T8M-API-Version header (header versioning).
+require "openapi3_parser"
+require "yaml"
+
+CONTRACT = "contracts/openapi/v1.yaml"
+REQUIRED_SCHEMES = %w[device_token session grant platform_service public_key].freeze
+VERBS = %w[get post put patch delete].freeze
+
+problems = []
+
+doc = Openapi3Parser.load_file(CONTRACT)
+problems.concat(doc.errors.map(&:to_s)) unless doc.valid?
+
+raw = YAML.safe_load(File.read(CONTRACT))
+problems << "openapi version must be 3.1.x, got #{raw['openapi'].inspect}" unless raw["openapi"].to_s.start_with?("3.1")
+
+schemes = (raw.dig("components", "securitySchemes") || {}).keys
+missing = REQUIRED_SCHEMES - schemes
+problems << "missing auth scopes: #{missing.join(', ')}" unless missing.empty?
+
+(raw["paths"] || {}).each do |path, ops|
+  ops.each do |verb, op|
+    next unless VERBS.include?(verb)
+
+    problems << "#{verb.upcase} #{path}: operation is not secured" if Array(op["security"]).empty?
+    params = Array(op["parameters"])
+    versioned = params.any? { |p| p["$ref"].to_s.include?("ApiVersion") || p["name"] == "X-T8M-API-Version" }
+    problems << "#{verb.upcase} #{path}: missing X-T8M-API-Version header" unless versioned
+  end
+end
+
+if problems.empty?
+  puts "openapi lint: OK — #{CONTRACT} is valid OpenAPI 3.1, 5 auth scopes, header-versioned"
+else
+  warn "openapi lint: #{problems.size} problem(s):"
+  problems.each { |p| warn "  #{p}" }
+  exit 1
+end

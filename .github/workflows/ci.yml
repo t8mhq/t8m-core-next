@@ -72,6 +72,8 @@ jobs:
         run: bin/lint-flag-usage
       - name: Stock-write discipline (S1-G2 — movements only via Stock::Api)
         run: bin/lint-stock-writes
+      - name: OpenAPI contract valid (S1-G3 — 3.1, 5 auth scopes, header-versioned)
+        run: bin/lint-openapi
 
   test:
     runs-on: ubuntu-latest
