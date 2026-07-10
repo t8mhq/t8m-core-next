@@ -1,11 +1,33 @@
 module Payments
-  # Public API surface for the payments pack — the only constants reachable across
-  # pack boundaries (D3). No-op in G0; domain entry points arrive with the domain.
+  # S1-G4 — the payments pack's public API. Isolates the gateway (ADR-0005); everything
+  # outside the pack (and the webhook consumer) goes through here.
   module Api
     module_function
 
-    # Placeholder entry point so privacy enforcement has a real public surface
-    # to check from day one.
-    def noop = nil
+    # The configured PaymentGateway adapter. Swappable (tests inject a fake).
+    def gateway
+      @gateway ||= PagarmeAdapter.new
+    end
+
+    def gateway=(adapter)
+      @gateway = adapter
+    end
+
+    # Create a gateway charge and record it (awaiting_payment; confirmed only by webhook).
+    def create_charge(method:, amount_cents:, split: nil)
+      charge = gateway.create_charge(method: method, amount_cents: amount_cents, split: split)
+      Payments::Payment.create!(
+        tenant_id: ActiveRecord::Base.connection.select_value("SELECT app_tenant_id()"),
+        provider: "pagarme",
+        method: method,
+        amount_cents: amount_cents,
+        gateway_charge_id: charge.id,
+        status: charge.status
+      )
+    end
+
+    def fetch_status(payment)
+      gateway.fetch_status(payment.gateway_charge_id)
+    end
   end
 end
