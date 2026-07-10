@@ -272,7 +272,9 @@ CREATE TABLE public.payments (
     amount_cents integer DEFAULT 0 NOT NULL,
     acquirer_fee_cents integer,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    gateway_charge_id character varying,
+    status character varying DEFAULT 'awaiting_payment'::character varying NOT NULL
 );
 
 ALTER TABLE ONLY public.payments FORCE ROW LEVEL SECURITY;
@@ -742,6 +744,13 @@ CREATE UNIQUE INDEX index_ncm_classifications_on_ncm ON public.ncm_classificatio
 
 
 --
+-- Name: index_payments_on_gateway_charge_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_payments_on_gateway_charge_id ON public.payments USING btree (gateway_charge_id) WHERE (gateway_charge_id IS NOT NULL);
+
+
+--
 -- Name: index_plan_entitlements_on_plan_and_feature_key; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1048,6 +1057,7 @@ CREATE POLICY tenant_isolation ON public.tenant_fiscal_parameters USING (((publi
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260709221657'),
 ('20260709220310'),
 ('20260709201416'),
 ('20260709200211'),
