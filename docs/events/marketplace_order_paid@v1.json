@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "marketplace_order_paid@v1",
+  "type": "object",
+  "properties": {
+    "marketplace_order_id": { "type": "string" },
+    "seller_tenant_id": { "type": "string" },
+    "total_cents": { "type": "integer" }
+  },
+  "required": ["marketplace_order_id", "seller_tenant_id", "total_cents"],
+  "additionalProperties": false
+}

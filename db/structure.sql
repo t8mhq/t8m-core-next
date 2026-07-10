@@ -275,6 +275,24 @@ CREATE TABLE public.ncm_classifications (
 
 
 --
+-- Name: orders; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.orders (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    channel character varying NOT NULL,
+    marketplace_order_ref uuid,
+    total_cents integer DEFAULT 0 NOT NULL,
+    status character varying DEFAULT 'confirmed'::character varying NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+ALTER TABLE ONLY public.orders FORCE ROW LEVEL SECURITY;
+
+
+--
 -- Name: pagarme_recipients; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -619,6 +637,14 @@ ALTER TABLE ONLY public.tenant_fiscal_parameters
 
 
 --
+-- Name: orders orders_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.orders
+    ADD CONSTRAINT orders_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: pagarme_recipients pagarme_recipients_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -823,6 +849,13 @@ CREATE UNIQUE INDEX index_ncm_classifications_on_ncm ON public.ncm_classificatio
 
 
 --
+-- Name: index_orders_on_tenant_id_and_marketplace_order_ref; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_orders_on_tenant_id_and_marketplace_order_ref ON public.orders USING btree (tenant_id, marketplace_order_ref);
+
+
+--
 -- Name: index_pagarme_recipients_on_tenant_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1013,6 +1046,12 @@ CREATE POLICY mkt_seller_own ON public.seller_profiles USING (((public.app_scope
 
 
 --
+-- Name: orders; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: pagarme_recipients; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -1107,6 +1146,13 @@ CREATE POLICY tenant_isolation ON public.domain_events USING (((public.app_scope
 
 
 --
+-- Name: orders tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY tenant_isolation ON public.orders USING (((public.app_scope() = 'tenant'::text) AND (tenant_id = public.app_tenant_id())));
+
+
+--
 -- Name: pagarme_recipients tenant_isolation; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -1183,6 +1229,7 @@ CREATE POLICY tenant_isolation ON public.tenant_fiscal_parameters USING (((publi
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260709224547'),
 ('20260709223601'),
 ('20260709223204'),
 ('20260709222357'),

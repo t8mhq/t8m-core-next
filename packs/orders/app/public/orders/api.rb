@@ -1,11 +1,22 @@
 module Orders
-  # Public API surface for the orders pack — the only constants reachable across
-  # pack boundaries (D3). No-op in G0; domain entry points arrive with the domain.
+  # S1-G5 · I2 — the orders pack public API. Marketplace materializes sub-orders through
+  # here (never writing core tables directly, ADR-0004); backoffice reads through here too.
   module Api
     module_function
 
-    # Placeholder entry point so privacy enforcement has a real public surface
-    # to check from day one.
-    def noop = nil
+    def materialize_suborder(marketplace_order_id:, total_cents:)
+      Orders::Order.create!(
+        tenant_id: ActiveRecord::Base.connection.select_value("SELECT app_tenant_id()"),
+        channel: "marketplace",
+        marketplace_order_ref: marketplace_order_id,
+        total_cents: total_cents,
+        status: "confirmed"
+      )
+    end
+
+    # The sub-orders materialized for a marketplace order (in the current tenant scope).
+    def suborders(marketplace_order_ref:)
+      Orders::Order.where(marketplace_order_ref: marketplace_order_ref, channel: "marketplace").to_a
+    end
   end
 end
