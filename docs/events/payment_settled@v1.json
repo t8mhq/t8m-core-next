@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "payment_settled@v1",
+  "type": "object",
+  "properties": {
+    "gateway_charge_id": { "type": "string" },
+    "amount_cents": { "type": "integer" },
+    "fee_cents": { "type": "integer" }
+  },
+  "required": ["gateway_charge_id", "amount_cents", "fee_cents"],
+  "additionalProperties": false
+}

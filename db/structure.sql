@@ -395,6 +395,24 @@ ALTER TABLE ONLY public.seller_profiles FORCE ROW LEVEL SECURITY;
 
 
 --
+-- Name: settlements; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.settlements (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    gateway_charge_id character varying NOT NULL,
+    amount_cents integer NOT NULL,
+    fee_cents integer DEFAULT 0 NOT NULL,
+    payout_date date,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+ALTER TABLE ONLY public.settlements FORCE ROW LEVEL SECURITY;
+
+
+--
 -- Name: stock_balances; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -665,6 +683,14 @@ ALTER TABLE ONLY public.seller_profiles
 
 
 --
+-- Name: settlements settlements_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.settlements
+    ADD CONSTRAINT settlements_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: stock_balances stock_balances_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -829,6 +855,13 @@ CREATE INDEX index_probes_on_tenant_id ON public.probes USING btree (tenant_id);
 --
 
 CREATE INDEX index_seller_profiles_on_seller_tenant_id ON public.seller_profiles USING btree (seller_tenant_id);
+
+
+--
+-- Name: index_settlements_on_tenant_id_and_gateway_charge_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_settlements_on_tenant_id_and_gateway_charge_id ON public.settlements USING btree (tenant_id, gateway_charge_id);
 
 
 --
@@ -1010,6 +1043,12 @@ ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.seller_profiles ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: settlements; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.settlements ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: stock_balances; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -1096,6 +1135,13 @@ CREATE POLICY tenant_isolation ON public.products USING (((public.app_scope() = 
 
 
 --
+-- Name: settlements tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY tenant_isolation ON public.settlements USING (((public.app_scope() = 'tenant'::text) AND (tenant_id = public.app_tenant_id())));
+
+
+--
 -- Name: stock_balances tenant_isolation; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -1137,6 +1183,7 @@ CREATE POLICY tenant_isolation ON public.tenant_fiscal_parameters USING (((publi
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260709223601'),
 ('20260709223204'),
 ('20260709222357'),
 ('20260709221657'),

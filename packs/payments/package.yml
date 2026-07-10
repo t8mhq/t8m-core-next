@@ -3,4 +3,7 @@
 # decision recorded as a D-delta in the gate report that ships it.
 enforce_dependencies: true
 enforce_privacy: true
-dependencies: []
+# "." is the shared kernel (DomainEvents.publish from settlement ingestion). Not part of
+# the core-spec §1 inter-pack graph (check-pack-graph ignores it).
+dependencies:
+  - "."

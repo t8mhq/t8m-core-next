@@ -58,5 +58,22 @@ module Payments
     def build_split(total_cents:, seller_amounts:, commission_cents:)
       Payments::Split.build(total_cents: total_cents, seller_amounts: seller_amounts, commission_cents: commission_cents)
     end
+
+    # --- settlement ingestion (I5) + fee capture (I6) — under the seller's tenant scope ---
+
+    def ingest_settlement(gateway_charge_id:, amount_cents:, fee_cents:, payout_date: nil)
+      Payments::Settlement.transaction do
+        settlement = Payments::Settlement.create!(
+          tenant_id: current_tenant, gateway_charge_id: gateway_charge_id,
+          amount_cents: amount_cents, fee_cents: fee_cents, payout_date: payout_date
+        )
+        DomainEvents.publish(
+          event_type: "payment_settled@v1",
+          aggregate: settlement,
+          payload: { gateway_charge_id: gateway_charge_id, amount_cents: amount_cents, fee_cents: fee_cents }
+        )
+        settlement
+      end
+    end
   end
 end
