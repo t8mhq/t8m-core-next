@@ -74,6 +74,8 @@ jobs:
         run: bin/lint-stock-writes
       - name: OpenAPI contract valid (S1-G3 — 3.1, 5 auth scopes, header-versioned)
         run: bin/lint-openapi
+      - name: OpenAPI backward-compat (S1-G3 — contract may only grow within a version)
+        run: git fetch --no-tags --depth=50 origin main && bin/check-openapi-compat
 
   test:
     runs-on: ubuntu-latest

@@ -1,0 +1,81 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+#
+# S1-G3 · I3 / ADR-0009 §CI validation — backward-compatibility of the OpenAPI contract.
+# Within a major version the contract may only GROW. Breaking changes fail CI:
+#   * a removed operation (VERB path)
+#   * a removed response field, or a response field whose type changed
+# Additive changes (new paths, new fields) pass. Compares against a base ref
+# (default origin/main; override with OPENAPI_COMPAT_BASE).
+require "yaml"
+
+CONTRACT = "contracts/openapi/v1.yaml"
+VERBS = %w[get post put patch delete].freeze
+
+def resolve(node, root)
+  return node unless node.is_a?(Hash)
+  return resolve(root.dig(*node["$ref"].sub(%r{\A#/}, "").split("/")), root) if node.key?("$ref")
+
+  node
+end
+
+def collect_props(schema, root, prefix = "")
+  schema = resolve(schema, root)
+  out = {}
+  (schema["properties"] || {}).each do |name, sub|
+    sub = resolve(sub, root)
+    key = prefix.empty? ? name : "#{prefix}.#{name}"
+    out[key] = sub["type"] || "object"
+    out.merge!(collect_props(sub, root, key)) if sub["properties"]
+    out.merge!(collect_props(sub["items"], root, "#{key}[]")) if sub["type"] == "array" && sub["items"]
+  end
+  out
+end
+
+# { "POST /path 200.results[].uuid" => "string", ... } plus a marker per operation
+def signatures(doc)
+  sig = {}
+  (doc["paths"] || {}).each do |path, ops|
+    ops.each do |verb, op|
+      next unless VERBS.include?(verb)
+
+      sig["#{verb.upcase} #{path}"] = "<operation>"
+      (op["responses"] || {}).each do |code, resp|
+        schema = resolve(resp, doc).dig("content", "application/json", "schema")
+        next unless schema
+
+        collect_props(schema, doc).each { |name, type| sig["#{verb.upcase} #{path} #{code}.#{name}"] = type }
+      end
+    end
+  end
+  sig
+end
+
+base_ref = ENV["OPENAPI_COMPAT_BASE"] || "origin/main"
+base_raw = `git show #{base_ref}:#{CONTRACT} 2>/dev/null`.force_encoding("UTF-8")
+if base_raw.strip.empty?
+  puts "openapi compat: OK — no base contract (new file)"
+  exit 0
+end
+
+base = signatures(YAML.safe_load(base_raw))
+current = signatures(YAML.safe_load(File.read(CONTRACT)))
+
+problems = []
+base.each do |key, type|
+  if !current.key?(key)
+    problems << (type == "<operation>" ? "removed operation: #{key}" : "removed response field: #{key}")
+  elsif current[key] != type
+    problems << "type changed for #{key}: #{type} -> #{current[key]}"
+  end
+end
+
+if problems.empty?
+  puts "openapi compat: OK — contract changes are backward-compatible"
+else
+  warn "openapi compat: #{problems.size} breaking change(s):\n"
+  problems.each { |p| warn "  #{p}" }
+  warn "\nWithin a major version the contract may only grow. Breaking changes need a new version."
+  exit 1
+end
