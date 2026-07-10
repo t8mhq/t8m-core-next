@@ -52,5 +52,11 @@ module Payments
     def current_tenant
       ActiveRecord::Base.connection.select_value("SELECT app_tenant_id()")
     end
+
+    # --- splits (I4) — runs under mkt_platform ---
+
+    def build_split(total_cents:, seller_amounts:, commission_cents:)
+      Payments::Split.build(total_cents: total_cents, seller_amounts: seller_amounts, commission_cents: commission_cents)
+    end
   end
 end
