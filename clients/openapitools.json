@@ -1,0 +1,21 @@
+{
+  "$schema": "https://raw.githubusercontent.com/OpenAPITools/openapi-generator-cli/master/apps/generator-cli/src/config.schema.json",
+  "spaces": 2,
+  "generator-cli": {
+    "version": "7.7.0",
+    "generators": {
+      "typescript": {
+        "generatorName": "typescript-fetch",
+        "inputSpec": "contracts/openapi/v1.yaml",
+        "output": "clients/typescript",
+        "additionalProperties": { "supportsES6": true, "npmName": "@t8m/core-client" }
+      },
+      "rust": {
+        "generatorName": "rust",
+        "inputSpec": "contracts/openapi/v1.yaml",
+        "output": "clients/rust",
+        "additionalProperties": { "packageName": "t8m-core-client", "library": "reqwest" }
+      }
+    }
+  }
+}
