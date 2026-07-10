@@ -4,6 +4,7 @@
 # S1-G3 · I1 — validate the OpenAPI contract: it must be valid OpenAPI 3.1, declare the
 # five auth scopes (which map to the RLS scopes, ADR-0009), and every operation must be
 # secured and carry the X-T8M-API-Version header (header versioning).
+require "bundler/setup" # openapi3_parser is a bundled gem — put it on the load path (CI)
 require "openapi3_parser"
 require "yaml"
 
