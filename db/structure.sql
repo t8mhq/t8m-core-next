@@ -231,6 +231,20 @@ ALTER SEQUENCE public.flipper_gates_id_seq OWNED BY public.flipper_gates.id;
 
 
 --
+-- Name: gateway_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.gateway_events (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    gateway_event_id character varying NOT NULL,
+    event_type character varying NOT NULL,
+    payload jsonb DEFAULT '{}'::jsonb NOT NULL,
+    received_at timestamp(6) without time zone NOT NULL,
+    processed_at timestamp(6) without time zone
+);
+
+
+--
 -- Name: marketplace_orders; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -555,6 +569,14 @@ ALTER TABLE ONLY public.flipper_gates
 
 
 --
+-- Name: gateway_events gateway_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.gateway_events
+    ADD CONSTRAINT gateway_events_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: marketplace_orders marketplace_orders_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -751,6 +773,13 @@ CREATE UNIQUE INDEX index_flipper_features_on_key ON public.flipper_features USI
 --
 
 CREATE UNIQUE INDEX index_flipper_gates_on_feature_key_and_key_and_value ON public.flipper_gates USING btree (feature_key, key, value);
+
+
+--
+-- Name: index_gateway_events_on_gateway_event_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_gateway_events_on_gateway_event_id ON public.gateway_events USING btree (gateway_event_id);
 
 
 --
@@ -1108,6 +1137,7 @@ CREATE POLICY tenant_isolation ON public.tenant_fiscal_parameters USING (((publi
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260709223204'),
 ('20260709222357'),
 ('20260709221657'),
 ('20260709220310'),
