@@ -30,6 +30,9 @@ FileUtils.chdir APP_ROOT do
   system! "bin/db-migrate db:prepare"
   system! "bin/db-migrate db:reset" if ARGV.include?("--reset")
 
+  puts "\n== Applying role grants (S1-G2 · D7 — ACLs pg_dump strips) =="
+  system! "bin/db-migrate db:grants"
+
   puts "\n== Removing old logs and tempfiles =="
   system! "bin/rails log:clear tmp:clear"
 

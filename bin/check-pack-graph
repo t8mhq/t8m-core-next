@@ -38,7 +38,8 @@ CANONICAL.each do |pack, deps|
   next unless file.exist?
 
   cfg = YAML.safe_load(file.read) || {}
-  actual = Array(cfg["dependencies"]).map { |d| d.sub(%r{\Apacks/}, "") }.sort
+  # "." is the shared kernel, not part of the §1 inter-pack graph — ignore it here.
+  actual = Array(cfg["dependencies"]).reject { |d| d == "." }.map { |d| d.sub(%r{\Apacks/}, "") }.sort
   errors << "#{pack}: dependencies #{actual.inspect} != spec §1 #{deps.sort.inspect}" if actual != deps.sort
   errors << "#{pack}: enforce_dependencies must be true (D2)" unless cfg["enforce_dependencies"] == true
   errors << "#{pack}: enforce_privacy must be true (D2)" unless cfg["enforce_privacy"] == true

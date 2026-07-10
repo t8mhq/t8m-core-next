@@ -70,6 +70,8 @@ jobs:
         run: git fetch --no-tags --depth=50 origin main && bin/check-event-compat
       - name: Flag-usage discipline (S1-G2 — no flag checks inside models)
         run: bin/lint-flag-usage
+      - name: Stock-write discipline (S1-G2 — movements only via Stock::Api)
+        run: bin/lint-stock-writes
 
   test:
     runs-on: ubuntu-latest
@@ -106,6 +108,8 @@ jobs:
         run: bin/provision-db core_next_test
       - name: Prepare test schema as app_migrator
         run: bin/db-migrate db:prepare
+      - name: Apply role grants (S1-G2 · D7 — ACLs not in structure.sql)
+        run: bin/db-migrate db:grants
       - name: Run tests as app_user
         run: bin/rails test
       - name: RLS policy matrix (S1-G1 — required, fails on any skip)

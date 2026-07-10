@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# S1-G2 · I4 — stock movements are written ONLY through Stock::Api (the pack's single
+# public entry point). Packwerk already keeps Stock::Movement private cross-pack; this
+# catches direct writes anywhere but packs/stock/app/public.
+set -euo pipefail
+
+hits="$(grep -rn --include='*.rb' -E '\bMovement\.(create|new|insert|upsert|update|delete)' packs app 2>/dev/null \
+  | grep -v 'packs/stock/app/public/' || true)"
+
+if [ -n "$hits" ]; then
+  {
+    echo "stock-writes lint: stock_movements must be written through Stock::Api"
+    echo "(packs/stock/app/public), never via direct model use:"
+    echo "$hits"
+  } >&2
+  exit 1
+fi
+
+echo "stock-writes lint: OK — movements are written only through Stock::Api"

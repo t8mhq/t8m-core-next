@@ -3,4 +3,7 @@
 # decision recorded as a D-delta in the gate report that ships it.
 enforce_dependencies: true
 enforce_privacy: true
-dependencies: []
+# "." is the shared kernel (DomainEvents.publish from Stock::Api). No inter-pack deps
+# per core spec §1; the kernel dep is not part of the §1 graph (check-pack-graph ignores it).
+dependencies:
+  - "."
