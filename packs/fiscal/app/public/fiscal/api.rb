@@ -1,11 +1,13 @@
 module Fiscal
-  # Public API surface for the fiscal pack — the only constants reachable across
-  # pack boundaries (D3). No-op in G0; domain entry points arrive with the domain.
+  # S1-G5 — the fiscal pack public API. Fiscal readiness (ADR-0006) gates seller
+  # activation (marketplace) without exposing the pack's private models.
   module Api
     module_function
 
-    # Placeholder entry point so privacy enforcement has a real public surface
-    # to check from day one.
-    def noop = nil
+    # A tenant is fiscally ready when it has fiscal parameters in force on `date`.
+    # Read in the current tenant scope.
+    def ready?(tenant_id, date = Date.current)
+      Fiscal::TenantParameter.parameters_at(tenant_id, date).present?
+    end
   end
 end
